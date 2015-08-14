@@ -1,0 +1,58 @@
+backend:
+  build: wikia_authority
+  command: gunicorn -b 0.0.0.0:8080 wikia_authority.wsgi:application
+  links:
+    - frontend
+  ports:
+    - "8080:8080"
+  environment:
+    DEBUG_APP: 1
+    COMMIT: master  # pinned to master for now
+  links:
+    - rabbitmq
+
+worker:
+  build: wikia_authority
+  command: celery -A wikia_authority.celery worker --loglevel=info --concurrency=8 --without-gossip
+  environment:
+    C_FORCE_ROOT: 1
+    COMMIT: master  # pinned to master for now
+  links:
+    - rabbitmq
+
+flower:
+  build: wikia_authority
+  command: celery -A wikia_authority.celery flower --broker=amqp://rabbitmq:5672 --broker_api=http://guest:guest@rabbitmq:15672/api/
+  ports:
+    - "5555:5555"
+  links:
+    - rabbitmq
+
+redis:
+  image: dockerfile/redis
+  ports:
+    - "6379:6379"
+
+
+rabbitmq:
+  image: dockerfile/rabbitmq
+  ports:
+    - "5672:5672"
+    - "15672:15672"
+
+nginx:
+  build: nginx
+  ports:
+    - "80:80"
+  links:
+    - backend
+  volumes_from:
+    - backend
+
+haproxy:
+  command: bash /haproxy-start
+  build: haproxy
+  ports:
+    - "3306:3306"
+    - "8081:8081"
+    - "8983:8983"
