@@ -8,3 +8,4 @@ RUN git checkout $COMMIT
 RUN pip install -r requirements.txt
 
 RUN python setup.py install
+WORKDIR /wikia_authority/AuthorityReporter

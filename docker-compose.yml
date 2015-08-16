@@ -1,15 +1,28 @@
 backend:
   build: wikia_authority
-  command: gunicorn -b 0.0.0.0:8080 wikia_authority.wsgi:application
-  links:
-    - frontend
+  command: python app.py
   ports:
-    - "8080:8080"
+    - "5000:5000"
   environment:
-    DEBUG_APP: 1
-    COMMIT: master  # pinned to master for now
+      DEBUG_APP: 1
+      COMMIT: master  # pinned to master for now
   links:
     - rabbitmq
+
+reporter:
+  build: authority_reporter
+  command: app.py
+  environment:
+      DEBUG_APP: 1
+      COMMIT: master  # pinned to master for now
+    
+backend_dev:
+  build: wikia_authority_dev
+  command: python app.py
+  links:
+      - rabbitmq
+  volumes:
+      - ../WikiaAuthority:/wikia_authority:rw
 
 worker:
   build: wikia_authority
@@ -19,6 +32,16 @@ worker:
     COMMIT: master  # pinned to master for now
   links:
     - rabbitmq
+
+worker_dev:
+  build: wikia_authority_dev
+  command: celery -A wikia_authority.celery worker --loglevel=info --concurrency=8 --without-gossip
+  environment:
+    C_FORCE_ROOT: 1
+  links:
+    - rabbitmq
+  volumes:
+    - ../WikiaAuthority:/wikia_authority:rw
 
 flower:
   build: wikia_authority
